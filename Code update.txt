@@ -1,0 +1,49 @@
+from sqlalchemy import create_engine, Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship
+from datetime import datetime, timezone
+from config import POSTGRES_URI
+
+Base = declarative_base()
+engine = create_engine(POSTGRES_URI)
+SessionLocal = sessionmaker(bind=engine)
+
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, default="Guest User")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class Prompt(Base):
+    __tablename__ = "prompts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    text = Column(Text)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    user = relationship("User")
+
+class Response(Base):
+    __tablename__ = "responses"
+    id = Column(Integer, primary_key=True, index=True)
+    prompt_id = Column(Integer, ForeignKey("prompts.id"))
+    text = Column(Text)
+    prompt = relationship("Prompt")
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+
+
+SELECT 
+    u.id AS user_id,
+    u.name AS user_name,
+    u.created_at AS user_created_at,
+    p.id AS prompt_id,
+    p.text AS prompt_text,
+    r.id AS response_id,
+    r.text AS response_text
+FROM prompts p
+JOIN responses r ON p.id = r.prompt_id
+JOIN users u ON p.user_id = u.id
+ORDER BY p.id DESC;
+
