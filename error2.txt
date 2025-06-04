@@ -1,0 +1,4 @@
+darshan11@INLEN8520061044:/mnt/c/Users/DSALUNKE/Music/CHATBOT-REACT-PYTHON$ az acr login --name Reactchatbot
+You may want to use 'az acr login -n Reactchatbot --expose-token' to get an access token, which does not require Docker to be installed.
+2025-06-04 11:26:22.448192 An error occurred: DOCKER_COMMAND_ERROR
+Please verify if Docker client is installed and running.
