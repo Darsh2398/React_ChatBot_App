@@ -1,0 +1,72 @@
+frontend-
+
+# Stage 1: Build React app
+FROM node:18 AS build
+WORKDIR /app
+COPY . .
+RUN npm install && npm run build
+
+# Stage 2: Serve using Nginx
+FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+EXPOSE 80
+
+
+backend-
+
+FROM python:3.11-slim
+WORKDIR /app
+
+# Install dependencies
+COPY server/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy app code
+COPY server/ .
+
+# Expose port
+EXPOSE 8000
+
+# Start FastAPI app
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+docker-compose.yml-
+
+version: "3.9"
+services:
+  frontend:
+    build:
+      context: ./client
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./server
+    environment:
+      - POSTGRES_URI=postgresql://chatuser:chatpassword@localhost:5432/chatdb
+      - AZURE_OPENAI_API_KEY=6RSfcNzTPLj9rdrMNkLe1JTDvSy48nkE1o4ey71hFTKUzceafc5wJQQJ99BAACYeBjFXJ3w3AAABACOGHIBH
+      - AZURE_OPENAI_ENDPOINT=https://lz-pbs-2025-newinstance.openai.azure.com
+      - AZURE_DEPLOYMENT_NAME=gpt-4o
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: chatuser
+      POSTGRES_PASSWORD: chatpassword
+      POSTGRES_DB: chatdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/va/lib/postgresql/data
+
+volumes:
+  pgdata:
