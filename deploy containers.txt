@@ -1,0 +1,25 @@
+az container create \
+  --resource-group LZ_PBS_GENAI_R_GRP_2025 \
+  --name chatbot-backend \
+  --image reactchatbot.azurecr.io/chatbot-react-python-backend:latest \
+  --registry-login-server reactchatbot.azurecr.io \
+  --registry-username <your-acr-username> \
+  --registry-password <your-acr-password> \
+  --dns-name-label chatbot-backend-darsh2398 \
+  --ports 5000
+
+
+
+az container create \
+  --resource-group LZ_PBS_GENAI_R_GRP_2025 \
+  --name chatbot-frontend \
+  --image reactchatbot.azurecr.io/chatbot-react-python-frontend:latest \
+  --registry-login-server reactchatbot.azurecr.io \
+  --registry-username <your-acr-username> \
+  --registry-password <your-acr-password> \
+  --dns-name-label chatbot-frontend-darsh2398 \
+  --ports 80
+
+
+
+az acr credential show --name Reactchatbot
