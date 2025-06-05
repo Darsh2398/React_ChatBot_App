@@ -1,0 +1,68 @@
+az postgres flexible-server create \
+  --resource-group LZ_PBS_GENAI_R_GRP_2025 \
+  --name chatbot-postgres \
+  --location eastus \
+  --admin-user chatuser \
+  --admin-password chatpassword \
+  --sku-name B1ms \
+  --storage-size 32 \
+  --version 15 \
+  --public-access 0.0.0.0-255.255.255.255
+
+
+az postgres flexible-server show-connection-string \
+  --name chatbot-postgres \
+  --admin-user chatuser
+
+
+
+postgresql://chatuser@chatbot-postgres:chatpassword@chatbot-postgres.postgres.database.azure.com:5432/chatdb
+
+
+
+az containerapp create \
+  --name chatbot-backend \
+  --resource-group LZ_PBS_GENAI_R_GRP_2025 \
+  --environment chatbot-env \
+  --image reactchatbot.azurecr.io/chatbot-react-python-backend:latest \
+  --target-port 8000 \
+  --ingress external \
+  --registry-server reactchatbot.azurecr.io \
+  --registry-username <ACR_USERNAME> \
+  --registry-password <ACR_PASSWORD> \
+  --env-vars \
+    POSTGRES_URI=postgresql://chatuser@chatbot-postgres:chatpassword@chatbot-postgres.postgres.database.azure.com:5432/chatdb \
+    AZURE_OPENAI_API_KEY=6RSfcNzTPLj9rdrMNkLe1JTDvSy48nkE1o4ey71hFTKUzceafc5wJQQJ99BAACYeBjFXJ3w3AAABACOGHIBH \
+    AZURE_OPENAI_ENDPOINT=https://lz-pbs-2025-newinstance.openai.azure.com \
+    AZURE_DEPLOYMENT_NAME=gpt-4o
+
+
+az acr credential show --name Reactchatbot
+
+
+az containerapp create \
+  --name chatbot-frontend \
+  --resource-group LZ_PBS_GENAI_R_GRP_2025 \
+  --environment chatbot-env \
+  --image reactchatbot.azurecr.io/chatbot-react-frontend:latest \
+  --target-port 80 \
+  --ingress external \
+  --registry-server reactchatbot.azurecr.io \
+  --registry-username <ACR_USERNAME> \
+  --registry-password <ACR_PASSWORD>
+
+
+
+az containerapp show \
+  --name chatbot-backend \
+  --resource-group LZ_PBS_GENAI_R_GRP_2025 \
+  --query properties.configuration.ingress.fqdn \
+  --output tsv
+
+
+
+az containerapp show \
+  --name chatbot-frontend \
+  --resource-group LZ_PBS_GENAI_R_GRP_2025 \
+  --query properties.configuration.ingress.fqdn \
+  --output tsv
