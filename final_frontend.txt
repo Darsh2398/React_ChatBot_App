@@ -1,0 +1,167 @@
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import { saveAs } from 'file-saver';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import './App.css';
+
+function App() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [darkMode, setDarkMode] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const BACKEND_URL = process.env.REACT_APP_API_URL;
+  console.log("Using backend URL:", BACKEND_URL);
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMessage = { sender: "user", text: input, timestamp };
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setIsTyping(true);
+
+    try {
+      const res = await axios.post(`${BACKEND_URL}/chat`, { message: input });
+      const botMessage = {
+        sender: "bot",
+        text: res.data.reply,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages(prev => [...prev, {
+        sender: "bot",
+        text: "❌ Error: Failed to get response",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const toggleTheme = () => setDarkMode(prev => !prev);
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => toast.success("Copied to clipboard!"))
+      .catch(() => toast.error("Failed to copy!"));
+  };
+
+  const exportChat = () => {
+    const chatContent = messages.map(msg => {
+      const who = msg.sender === "user" ? "You" : "AI";
+      return `[${msg.timestamp}] ${who}: ${msg.text}`;
+    }).join("\n\n");
+    const blob = new Blob([chatContent], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, "chat_export.txt");
+    toast.success("Chat exported successfully!");
+  };
+
+  const scrollToTop = () => {
+    document.querySelector('.chat-box')?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const startNewChat = () => {
+    setMessages([]);
+    toast.info("Started a new chat!");
+  };
+
+  useEffect(() => {
+    document.body.className = darkMode ? 'dark' : 'light';
+  }, [darkMode]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <div className={`main-container ${darkMode ? 'dark-mode' : ''}`}>
+      <ToastContainer
+        position="bottom-right"
+        autoClose={2000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={darkMode ? "dark" : "light"}
+      />
+
+      <header className="header">
+        <div className="title">🤖 Talk to AI</div>
+        <div className="header-actions">
+          <button className="fab new-chat" onClick={startNewChat} title="New Chat">🆕</button>
+          <button className="theme-toggle" onClick={toggleTheme}>
+            {darkMode ? '☀️ Light' : '🌙 Dark'}
+          </button>
+        </div>
+      </header>
+
+      <div className="chat-area">
+        <div className="chat-box glass">
+          {messages.map((msg, idx) => (
+            <motion.div
+              key={idx}
+              className={`message ${msg.sender}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="avatar">{msg.sender === "user" ? "🧑" : "🤖"}</div>
+              <div className="message-content">
+                {msg.sender === "bot" ? (
+                  <>
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                    <button className="copy-btn" onClick={() => copyToClipboard(msg.text)}>📋 Copy</button>
+                  </>
+                ) : msg.text}
+                <div className="timestamp">{msg.timestamp}</div>
+              </div>
+            </motion.div>
+          ))}
+
+          {isTyping && (
+            <div className="message bot typing-indicator">
+              <div className="avatar">🤖</div>
+              <div className="message-content">
+                ChatGPT is typing<span className="dot">.</span><span className="dot">.</span><span className="dot">.</span>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="input-container glass">
+          <textarea
+            rows={1}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+          />
+          <button onClick={sendMessage}>➤</button>
+          <button onClick={exportChat} title="Export chat">📁</button>
+        </div>
+      </div>
+
+      <button className="fab scroll-top" onClick={scrollToTop} title="Scroll to Top">⬆️</button>
+    </div>
+  );
+}
+
+export default App;
